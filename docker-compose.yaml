@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  database:
+    image: mysql:8.0.31
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=lportal
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --character-set-client-handshake=FALSE --lower-case-table-names=0
+    volumes:
+      - ./docker-compose/mysql-dump:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+
+  liferay:
+    image: liferay/dxp:2025.q1.14-lts
+    environment:
+      - LIFERAY_JPDA_ENABLED=true
+      - LIFERAY_JVM_OPTS=-Xms4g -Xmx4g
+      - LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_DRIVER_UPPERCASEC_LASS_UPPERCASEN_AME=com.mysql.cj.jdbc.Driver
+      - LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_URL=jdbc:mysql://database/lportal?characterEncoding=UTF-8&dontTrackOpenResources=true&holdResultsOpenOverStatementClose=true&serverTimezone=GMT&useFastDateParsing=false&useUnicode=true
+      - LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_USERNAME=root
+      - LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_PASSWORD=root
+      - LIFERAY_MODULE_PERIOD_FRAMEWORK_PERIOD_PROPERTIES_PERIOD_OSGI_PERIOD_CONSOLE=0.0.0.0:11311
+      - LIFERAY_RETRY_PERIOD_JDBC_PERIOD_ON_PERIOD_STARTUP_PERIOD_DELAY=60
+      - LIFERAY_RETRY_PERIOD_JDBC_PERIOD_ON_PERIOD_STARTUP_PERIOD_MAX_PERIOD_RETRIES=20
+      - LIFERAY_SETUP_PERIOD_WIZARD_PERIOD_ENABLED=false
+      - LIFERAY_COUNTER_PERIOD_INCREMENT=5000
+      - LIFERAY_SESSION_PERIOD_TRACKER_PERIOD_MEMORY_PERIOD_ENABLED=false
+      - LIFERAY_PORTLET_PERIOD_CSS_PERIOD_ENABLED=true
+      - LIFERAY_DIRECT_PERIOD_SERVLET_PERIOD_CONTEXT_PERIOD_RELOAD=false
+      - LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_MAXIMUM_UPPERCASEP_OOL_UPPERCASES_IZE=100
+      - LIFERAY_USERS_PERIOD_UPDATE_PERIOD_LAST_PERIOD_LOGIN=false
+      - LIFERAY_UPGRADE_PERIOD_DATABASE_PERIOD_AUTO_PERIOD_RUN=true
+    ports:
+      - "8080:8080"
+      - "11311:11311"
+      - "8000:8000"
+    volumes:
+      - ./docker-compose/liferay-files:/mnt/liferay/files
+      - ./docker-compose/liferay-document-library:/opt/liferay/data/document_library
+      - ./docker-compose/liferay-patching:/mnt/liferay/patching
+      - ./docker-compose/liferay-scripts:/mnt/liferay/scripts
+      - ./bundles/deploy:/mnt/liferay/deploy
+      - ./bundles/osgi/modules:/opt/liferay/osgi/modules
+      - ./bundles/osgi/war:/opt/liferay/osgi/war
+      - ./bundles/osgi/client-extensions:/opt/liferay/osgi/client-extensions
+      - ./bundles/logs:/opt/liferay/logs
+    depends_on:
+      - database
+      - search
+
+  search:
+    image: liferay/elasticsearch
+    build: ./docker-compose/elasticsearch/
+    volumes:
+      - ./docker-compose/elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - cluster.name=liferay_cluster
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "discovery.type=single-node"
+      - "node.name=es-node1"
